@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import json
+import os
 
 # Define available weight plates
 PLATES_LBS = [45, 35, 25, 10, 5, 2.5]
@@ -83,17 +85,63 @@ def create_barbell_visual(final_plates, drop_plates, unit):
     
     return fig
 
+def save_configuration(name, unit, barbell_type, plates):
+    """Save the current gym configuration to a JSON file"""
+    config = {
+        "name": name,
+        "unit": unit,
+        "barbell_type": barbell_type,
+        "plates": plates
+    }
+    
+    if not os.path.exists("gym_configs"):
+        os.makedirs("gym_configs")
+    
+    with open(f"gym_configs/{name}.json", "w") as f:
+        json.dump(config, f)
+
+def load_configuration(name):
+    """Load a gym configuration from a JSON file"""
+    try:
+        with open(f"gym_configs/{name}.json", "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return None
+
+def get_saved_configurations():
+    """Get a list of saved gym configurations"""
+    if not os.path.exists("gym_configs"):
+        return []
+    return [f.split(".")[0] for f in os.listdir("gym_configs") if f.endswith(".json")]
+
 def main():
     st.title("Advanced Weightlifting Plate Calculator")
     st.write("Optimize your barbell setup for weightlifting and strength training exercises, including drop sets.")
     
+    # Load saved configurations
+    saved_configs = get_saved_configurations()
+    selected_config = st.selectbox("Load saved configuration:", [""] + saved_configs)
+    
+    if selected_config:
+        config = load_configuration(selected_config)
+        if config:
+            st.success(f"Loaded configuration: {selected_config}")
+            unit = config["unit"]
+            barbell_type = config["barbell_type"]
+            plates = config["plates"]
+        else:
+            st.error(f"Failed to load configuration: {selected_config}")
+            unit, barbell_type, plates = "lbs", list(BARBELLS.keys())[0], PLATES_LBS
+    else:
+        unit, barbell_type, plates = "lbs", list(BARBELLS.keys())[0], PLATES_LBS
+    
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        unit = st.selectbox("Unit:", ["lbs", "kg"])
+        unit = st.selectbox("Unit:", ["lbs", "kg"], index=["lbs", "kg"].index(unit))
     
     with col2:
-        barbell_type = st.selectbox("Barbell Type:", list(BARBELLS.keys()))
+        barbell_type = st.selectbox("Barbell Type:", list(BARBELLS.keys()), index=list(BARBELLS.keys()).index(barbell_type))
         bar_weight = BARBELLS[barbell_type][unit]
     
     with col3:
@@ -101,6 +149,10 @@ def main():
     
     percent_drop = st.slider("Percent Drop (%):", min_value=0.0, max_value=100.0, step=5.0, value=75.0) / 100
 
+    # Custom plate configuration
+    st.subheader("Custom Plate Configuration")
+    custom_plates = st.multiselect("Available plates:", PLATES_LBS if unit == "lbs" else PLATES_KG, default=plates)
+    
     if st.button("Calculate"):
         final_set_weight = (final_side_weight * 2) + bar_weight
         drop_side_weight = final_set_weight * (1 - percent_drop)
@@ -155,13 +207,25 @@ def main():
         st.plotly_chart(fig, use_container_width=True)
         st.caption("Top: Final Set, Bottom: Drop Set")
     
+    # Save configuration
+    st.subheader("Save Current Configuration")
+    config_name = st.text_input("Configuration Name:")
+    if st.button("Save Configuration"):
+        if config_name:
+            save_configuration(config_name, unit, barbell_type, custom_plates)
+            st.success(f"Configuration '{config_name}' saved successfully!")
+        else:
+            st.warning("Please enter a name for the configuration.")
+    
     st.markdown("---")
     st.subheader("How to use this calculator:")
     st.write("1. Select your preferred unit (lbs or kg).")
     st.write("2. Choose the type of barbell you're using.")
     st.write("3. Enter the weight you want on each side of the bar for your final (heaviest) set.")
     st.write("4. Set the percentage you want to drop for your drop set.")
-    st.write("5. Click 'Calculate' to see the optimal plate combinations and weights for both sets.")
+    st.write("5. Customize available plates if needed.")
+    st.write("6. Click 'Calculate' to see the optimal plate combinations and weights for both sets.")
+    st.write("7. Save your gym configuration for future use.")
     
     st.markdown("---")
     st.write(f"Note: This calculator uses {unit} and assumes standard weight plate increments.")
