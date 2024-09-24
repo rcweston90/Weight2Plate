@@ -6,9 +6,18 @@ import plotly.graph_objects as go
 PLATES_LBS = [45, 35, 25, 10, 5, 2.5]
 PLATES_KG = [20, 15, 10, 5, 2.5, 1.25]
 
-def calculate_plates(target_weight, bar_weight):
+# Define barbell types and their weights
+BARBELLS = {
+    "Olympic (20kg/44lbs)": {"kg": 20, "lbs": 44},
+    "Standard (45lbs)": {"kg": 20.4, "lbs": 45},
+    "Women's Olympic (15kg/33lbs)": {"kg": 15, "lbs": 33},
+    "EZ Curl Bar (18kg/40lbs)": {"kg": 18, "lbs": 40},
+    "Trap Bar (27kg/60lbs)": {"kg": 27, "lbs": 60},
+}
+
+def calculate_plates(target_weight, bar_weight, unit):
     """Calculate the optimal combination of weight plates"""
-    plates = PLATES_LBS  # We'll use lbs for simplicity in this version
+    plates = PLATES_LBS if unit == "lbs" else PLATES_KG
     
     remaining_weight = (target_weight - bar_weight) / 2  # Divide by 2 to get weight per side
     if remaining_weight < 0:
@@ -23,7 +32,7 @@ def calculate_plates(target_weight, bar_weight):
     
     return combination
 
-def create_barbell_visual(final_plates, drop_plates):
+def create_barbell_visual(final_plates, drop_plates, unit):
     """Create a visual representation of the loaded barbell for final and drop sets"""
     barbell_length = 2.2  # meters
     sleeve_length = 0.4  # meters
@@ -49,12 +58,14 @@ def create_barbell_visual(final_plates, drop_plates):
     plate_positions = [-barbell_length/2+sleeve_length, barbell_length/2-sleeve_length]
     plate_colors = ['red', 'blue', 'yellow', 'green', 'white', 'black']
     
+    max_plate = max(PLATES_LBS) if unit == "lbs" else max(PLATES_KG)
+    
     for plates, y_offset in [(final_plates, 0.2), (drop_plates, -0.2)]:
         for side in [0, 1]:
             position = plate_positions[side]
             direction = 1 if side == 1 else -1
             for i, plate in enumerate(plates):
-                plate_width = 0.02 + (plate / max(PLATES_LBS)) * 0.03
+                plate_width = 0.02 + (plate / max_plate) * 0.03
                 fig.add_shape(type="line",
                               x0=position, y0=y_offset-0.15, x1=position, y1=y_offset+0.15,
                               line=dict(color=plate_colors[i % len(plate_colors)], width=plate_width*100))
@@ -79,13 +90,16 @@ def main():
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        final_side_weight = st.number_input("Final Side Weight (lbs):", min_value=0.0, step=2.5, value=70.0)
+        unit = st.selectbox("Unit:", ["lbs", "kg"])
     
     with col2:
-        bar_weight = st.number_input("Bar Weight (lbs):", min_value=0.0, step=5.0, value=45.0)
+        barbell_type = st.selectbox("Barbell Type:", list(BARBELLS.keys()))
+        bar_weight = BARBELLS[barbell_type][unit]
     
     with col3:
-        percent_drop = st.number_input("Percent Drop (%):", min_value=0.0, max_value=100.0, step=5.0, value=75.0) / 100
+        final_side_weight = st.number_input(f"Final Side Weight ({unit}):", min_value=0.0, step=2.5 if unit == "lbs" else 1.25, value=70.0 if unit == "lbs" else 31.75)
+    
+    percent_drop = st.slider("Percent Drop (%):", min_value=0.0, max_value=100.0, step=5.0, value=75.0) / 100
 
     if st.button("Calculate"):
         final_set_weight = (final_side_weight * 2) + bar_weight
@@ -94,10 +108,10 @@ def main():
         remaining_weight_per_side = (remaining_weight - bar_weight) / 2
         
         st.subheader("Calculated Weights:")
-        st.write(f"Final Set Weight: {final_set_weight:.2f} lbs")
-        st.write(f"Weight 2 Remove: {drop_side_weight:.2f} lbs")
-        st.write(f"Drop Set Weight: {remaining_weight:.2f} lbs")
-        st.write(f"Weight Per Side, Drop: {remaining_weight_per_side:.2f} lbs")
+        st.write(f"Final Set Weight: {final_set_weight:.2f} {unit}")
+        st.write(f"Weight 2 Remove: {drop_side_weight:.2f} {unit}")
+        st.write(f"Drop Set Weight: {remaining_weight:.2f} {unit}")
+        st.write(f"Weight Per Side, Drop: {remaining_weight_per_side:.2f} {unit}")
         
         st.subheader("Calculation Breakdown:")
         st.write("Here's how we calculate the weights for your workout:")
@@ -118,8 +132,8 @@ def main():
         st.latex(f"RemainingWeightPerSide = ({remaining_weight:.2f} - {bar_weight:.2f}) \div 2 = {remaining_weight_per_side:.2f}")
         st.write("This is the weight that remains on each side of the bar after removing the drop weight.")
         
-        final_plates = calculate_plates(final_set_weight, bar_weight)
-        drop_plates = calculate_plates(remaining_weight_per_side * 2 + bar_weight, bar_weight)
+        final_plates = calculate_plates(final_set_weight, bar_weight, unit)
+        drop_plates = calculate_plates(remaining_weight, bar_weight, unit)
         
         st.subheader("Plate Combinations:")
         col1, col2 = st.columns(2)
@@ -128,28 +142,29 @@ def main():
             st.write("Final Set (per side):")
             plate_counts = pd.Series(final_plates).value_counts().sort_index()
             for plate, count in plate_counts.items():
-                st.write(f"{count}x {plate} lbs")
+                st.write(f"{count}x {plate} {unit}")
         
         with col2:
             st.write("Drop Set (per side):")
             plate_counts = pd.Series(drop_plates).value_counts().sort_index()
             for plate, count in plate_counts.items():
-                st.write(f"{count}x {plate} lbs")
+                st.write(f"{count}x {plate} {unit}")
         
         st.subheader("Visual Representation:")
-        fig = create_barbell_visual(final_plates, drop_plates)
+        fig = create_barbell_visual(final_plates, drop_plates, unit)
         st.plotly_chart(fig, use_container_width=True)
         st.caption("Top: Final Set, Bottom: Drop Set")
     
     st.markdown("---")
     st.subheader("How to use this calculator:")
-    st.write("1. Enter the weight you want on each side of the bar for your final (heaviest) set.")
-    st.write("2. Specify the weight of the barbell you're using.")
-    st.write("3. Set the percentage you want to drop for your drop set.")
-    st.write("4. Click 'Calculate' to see the optimal plate combinations and weights for both sets.")
+    st.write("1. Select your preferred unit (lbs or kg).")
+    st.write("2. Choose the type of barbell you're using.")
+    st.write("3. Enter the weight you want on each side of the bar for your final (heaviest) set.")
+    st.write("4. Set the percentage you want to drop for your drop set.")
+    st.write("5. Click 'Calculate' to see the optimal plate combinations and weights for both sets.")
     
     st.markdown("---")
-    st.write("Note: This calculator uses pounds (lbs) and assumes standard weight plate increments.")
+    st.write(f"Note: This calculator uses {unit} and assumes standard weight plate increments.")
 
 if __name__ == "__main__":
     main()
