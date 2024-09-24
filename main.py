@@ -6,116 +6,129 @@ import plotly.graph_objects as go
 PLATES_LBS = [45, 35, 25, 10, 5, 2.5]
 PLATES_KG = [20, 15, 10, 5, 2.5, 1.25]
 
-# Define barbell weights
-BARBELL_LBS = 45
-BARBELL_KG = 20
-
-# Define common lift types
-LIFT_TYPES = ["Custom", "Squat", "Bench Press", "Deadlift", "Overhead Press", "Barbell Row"]
-
-def calculate_plates(target_weight, unit_system):
+def calculate_plates(target_weight, bar_weight):
     """Calculate the optimal combination of weight plates"""
-    plates = PLATES_LBS if unit_system == "lbs" else PLATES_KG
-    barbell_weight = BARBELL_LBS if unit_system == "lbs" else BARBELL_KG
+    plates = PLATES_LBS  # We'll use lbs for simplicity in this version
     
-    remaining_weight = target_weight - barbell_weight
+    remaining_weight = (target_weight - bar_weight) / 2  # Divide by 2 to get weight per side
     if remaining_weight < 0:
         return []
     
     combination = []
     for plate in plates:
-        count = remaining_weight // (2 * plate)
+        count = int(remaining_weight // plate)
         if count > 0:
-            combination.extend([plate] * int(count))
-            remaining_weight -= 2 * plate * count
+            combination.extend([plate] * count)
+            remaining_weight -= plate * count
     
     return combination
 
-def create_barbell_visual(plates, unit_system):
-    """Create a visual representation of the loaded barbell"""
+def create_barbell_visual(final_plates, drop_plates):
+    """Create a visual representation of the loaded barbell for final and drop sets"""
     barbell_length = 2.2  # meters
     sleeve_length = 0.4  # meters
     
     fig = go.Figure()
     
-    # Add barbell
-    fig.add_shape(type="line", x0=-barbell_length/2, y0=0, x1=barbell_length/2, y1=0,
+    # Add barbell for final set
+    fig.add_shape(type="line", x0=-barbell_length/2, y0=0.2, x1=barbell_length/2, y1=0.2,
+                  line=dict(color="gray", width=10))
+    
+    # Add barbell for drop set
+    fig.add_shape(type="line", x0=-barbell_length/2, y0=-0.2, x1=barbell_length/2, y1=-0.2,
                   line=dict(color="gray", width=10))
     
     # Add sleeves
-    fig.add_shape(type="line", x0=-barbell_length/2, y0=0, x1=-barbell_length/2+sleeve_length, y1=0,
-                  line=dict(color="darkgray", width=20))
-    fig.add_shape(type="line", x0=barbell_length/2-sleeve_length, y0=0, x1=barbell_length/2, y1=0,
-                  line=dict(color="darkgray", width=20))
+    for y in [0.2, -0.2]:
+        fig.add_shape(type="line", x0=-barbell_length/2, y0=y, x1=-barbell_length/2+sleeve_length, y1=y,
+                      line=dict(color="darkgray", width=20))
+        fig.add_shape(type="line", x0=barbell_length/2-sleeve_length, y0=y, x1=barbell_length/2, y1=y,
+                      line=dict(color="darkgray", width=20))
     
     # Add plates
     plate_positions = [-barbell_length/2+sleeve_length, barbell_length/2-sleeve_length]
     plate_colors = ['red', 'blue', 'yellow', 'green', 'white', 'black']
     
-    for side in [0, 1]:
-        position = plate_positions[side]
-        direction = 1 if side == 1 else -1
-        for i, plate in enumerate(plates):
-            plate_width = 0.02 + (plate / max(PLATES_LBS if unit_system == "lbs" else PLATES_KG)) * 0.03
-            fig.add_shape(type="line",
-                          x0=position, y0=-0.2, x1=position, y1=0.2,
-                          line=dict(color=plate_colors[i % len(plate_colors)], width=plate_width*100))
-            # Add plate weight label
-            fig.add_annotation(x=position, y=0.25, text=f"{plate} {unit_system}",
-                               showarrow=False, font=dict(size=10))
-            position += direction * plate_width
+    for plates, y_offset in [(final_plates, 0.2), (drop_plates, -0.2)]:
+        for side in [0, 1]:
+            position = plate_positions[side]
+            direction = 1 if side == 1 else -1
+            for i, plate in enumerate(plates):
+                plate_width = 0.02 + (plate / max(PLATES_LBS)) * 0.03
+                fig.add_shape(type="line",
+                              x0=position, y0=y_offset-0.15, x1=position, y1=y_offset+0.15,
+                              line=dict(color=plate_colors[i % len(plate_colors)], width=plate_width*100))
+                fig.add_annotation(x=position, y=y_offset+0.2, text=f"{plate}",
+                                   showarrow=False, font=dict(size=10))
+                position += direction * plate_width
     
     fig.update_layout(
         showlegend=False,
         xaxis=dict(visible=False, range=[-barbell_length/2-0.1, barbell_length/2+0.1]),
-        yaxis=dict(visible=False, range=[-0.3, 0.3]),
+        yaxis=dict(visible=False, range=[-0.5, 0.5]),
         margin=dict(l=0, r=0, t=0, b=0),
-        height=250
+        height=400
     )
     
     return fig
 
 def main():
-    st.title("Weightlifting Plate Calculator")
-    st.write("Optimize your barbell setup for weightlifting and strength training exercises.")
+    st.title("Advanced Weightlifting Plate Calculator")
+    st.write("Optimize your barbell setup for weightlifting and strength training exercises, including drop sets.")
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        lift_type = st.selectbox("Select lift type:", LIFT_TYPES)
+        final_side_weight = st.number_input("Final Side Weight (lbs):", min_value=0.0, step=2.5, value=70.0)
     
     with col2:
-        target_weight = st.number_input("Enter target weight:", min_value=0.0, step=0.5, value=100.0)
+        bar_weight = st.number_input("Bar Weight (lbs):", min_value=0.0, step=5.0, value=45.0)
     
     with col3:
-        unit_system = st.selectbox("Select unit system:", ["lbs", "kg"])
-    
+        percent_drop = st.number_input("Percent Drop (%):", min_value=0.0, max_value=100.0, step=5.0, value=75.0) / 100
+
     if st.button("Calculate"):
-        plates = calculate_plates(target_weight, unit_system)
+        final_set_weight = (final_side_weight * 2) + bar_weight
+        drop_side_weight = final_set_weight * (1 - percent_drop) / 2
+        drop_set_weight = (drop_side_weight * 2) + bar_weight
         
-        if not plates:
-            st.warning(f"The target weight is less than or equal to the barbell weight ({BARBELL_LBS if unit_system == 'lbs' else BARBELL_KG} {unit_system}).")
-        else:
-            st.subheader("Optimal plate combination:")
-            plate_counts = pd.Series(plates).value_counts().sort_index()
+        st.subheader("Calculated Weights:")
+        st.write(f"Final Set Weight: {final_set_weight:.1f} lbs")
+        st.write(f"Drop Side Weight: {drop_side_weight:.1f} lbs")
+        st.write(f"Drop Set Weight: {drop_set_weight:.1f} lbs")
+        
+        final_plates = calculate_plates(final_set_weight, bar_weight)
+        drop_plates = calculate_plates(drop_set_weight, bar_weight)
+        
+        st.subheader("Plate Combinations:")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write("Final Set (per side):")
+            plate_counts = pd.Series(final_plates).value_counts().sort_index()
             for plate, count in plate_counts.items():
-                st.write(f"{count}x {plate} {unit_system}")
-            
-            total_weight = sum(plates) * 2 + (BARBELL_LBS if unit_system == "lbs" else BARBELL_KG)
-            st.write(f"Total weight: {total_weight} {unit_system}")
-            
-            st.subheader("Visual representation:")
-            fig = create_barbell_visual(plates, unit_system)
-            st.plotly_chart(fig, use_container_width=True)
+                st.write(f"{count}x {plate} lbs")
+        
+        with col2:
+            st.write("Drop Set (per side):")
+            plate_counts = pd.Series(drop_plates).value_counts().sort_index()
+            for plate, count in plate_counts.items():
+                st.write(f"{count}x {plate} lbs")
+        
+        st.subheader("Visual Representation:")
+        fig = create_barbell_visual(final_plates, drop_plates)
+        st.plotly_chart(fig, use_container_width=True)
+        st.caption("Top: Final Set, Bottom: Drop Set")
     
     st.markdown("---")
-    st.subheader("Tips")
-    st.write("1. Warm-up sets: Start with 2-3 sets at 50-60% of your target weight.")
-    st.write("2. Progressive loading: Increase weight gradually by 5-10% each week.")
-    st.write("3. Rest between sets: Take 2-3 minutes for compound exercises like squats and deadlifts.")
+    st.subheader("How to use this calculator:")
+    st.write("1. Enter the weight you want on each side of the bar for your final (heaviest) set.")
+    st.write("2. Specify the weight of the barbell you're using.")
+    st.write("3. Set the percentage you want to drop for your drop set.")
+    st.write("4. Click 'Calculate' to see the optimal plate combinations and weights for both sets.")
     
     st.markdown("---")
-    st.write("Note: This calculator assumes a standard Olympic barbell weight of 45 lbs (20 kg).")
+    st.write("Note: This calculator uses pounds (lbs) and assumes standard weight plate increments.")
 
 if __name__ == "__main__":
     main()
