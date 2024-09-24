@@ -10,6 +10,9 @@ PLATES_KG = [20, 15, 10, 5, 2.5, 1.25]
 BARBELL_LBS = 45
 BARBELL_KG = 20
 
+# Define common lift types
+LIFT_TYPES = ["Custom", "Squat", "Bench Press", "Deadlift", "Overhead Press", "Barbell Row"]
+
 def calculate_plates(target_weight, unit_system):
     """Calculate the optimal combination of weight plates"""
     plates = PLATES_LBS if unit_system == "lbs" else PLATES_KG
@@ -57,6 +60,9 @@ def create_barbell_visual(plates, unit_system):
             fig.add_shape(type="line",
                           x0=position, y0=-0.2, x1=position, y1=0.2,
                           line=dict(color=plate_colors[i % len(plate_colors)], width=plate_width*100))
+            # Add plate weight label
+            fig.add_annotation(x=position, y=0.25, text=f"{plate} {unit_system}",
+                               showarrow=False, font=dict(size=10))
             position += direction * plate_width
     
     fig.update_layout(
@@ -64,20 +70,24 @@ def create_barbell_visual(plates, unit_system):
         xaxis=dict(visible=False, range=[-barbell_length/2-0.1, barbell_length/2+0.1]),
         yaxis=dict(visible=False, range=[-0.3, 0.3]),
         margin=dict(l=0, r=0, t=0, b=0),
-        height=200
+        height=250
     )
     
     return fig
 
 def main():
-    st.title("Enhanced Weight Plate Calculator")
+    st.title("Weightlifting Plate Calculator")
+    st.write("Optimize your barbell setup for weightlifting and strength training exercises.")
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
-        target_weight = st.number_input("Enter target weight:", min_value=0.0, step=0.5, value=100.0)
+        lift_type = st.selectbox("Select lift type:", LIFT_TYPES)
     
     with col2:
+        target_weight = st.number_input("Enter target weight:", min_value=0.0, step=0.5, value=100.0)
+    
+    with col3:
         unit_system = st.selectbox("Select unit system:", ["lbs", "kg"])
     
     if st.button("Calculate"):
@@ -97,6 +107,12 @@ def main():
             st.subheader("Visual representation:")
             fig = create_barbell_visual(plates, unit_system)
             st.plotly_chart(fig, use_container_width=True)
+    
+    st.markdown("---")
+    st.subheader("Tips")
+    st.write("1. Warm-up sets: Start with 2-3 sets at 50-60% of your target weight.")
+    st.write("2. Progressive loading: Increase weight gradually by 5-10% each week.")
+    st.write("3. Rest between sets: Take 2-3 minutes for compound exercises like squats and deadlifts.")
     
     st.markdown("---")
     st.write("Note: This calculator assumes a standard Olympic barbell weight of 45 lbs (20 kg).")
