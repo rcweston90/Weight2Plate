@@ -90,12 +90,12 @@ def main():
     if st.button("Calculate"):
         final_set_weight = (final_side_weight * 2) + bar_weight
         drop_side_weight = final_set_weight * (1 - percent_drop)
-        drop_set_weight = drop_side_weight + bar_weight
+        remaining_weight = final_set_weight - drop_side_weight
         
         st.subheader("Calculated Weights:")
         st.write(f"Final Set Weight (total): {final_set_weight:.1f} lbs")
         st.write(f"Drop Side Weight (total to remove): {drop_side_weight:.1f} lbs")
-        st.write(f"Drop Set Weight (total): {drop_set_weight:.1f} lbs")
+        st.write(f"Remaining Weight (after drop): {remaining_weight:.1f} lbs")
         
         st.subheader("Calculation Breakdown:")
         st.write("Here's how we calculate the weights for your workout:")
@@ -108,12 +108,12 @@ def main():
         st.latex(f"DropSideWeight = {final_set_weight:.1f} \times (1 - {percent_drop:.2f}) = {drop_side_weight:.1f}")
         st.write("This is the total weight to remove from the bar for your drop set.")
         
-        st.latex(r"DropSetWeight = DropSideWeight + BarWeight")
-        st.latex(f"DropSetWeight = {drop_side_weight:.1f} + {bar_weight:.1f} = {drop_set_weight:.1f}")
-        st.write("This is the total weight for your drop set, including the bar and all plates.")
+        st.latex(r"RemainingWeight = FinalSetWeight - DropSideWeight")
+        st.latex(f"RemainingWeight = {final_set_weight:.1f} - {drop_side_weight:.1f} = {remaining_weight:.1f}")
+        st.write("This is the weight that remains on the bar after removing the drop weight.")
         
         final_plates = calculate_plates(final_set_weight, bar_weight)
-        drop_plates = calculate_plates(drop_set_weight, bar_weight)
+        drop_plates = calculate_plates(remaining_weight, bar_weight)
         
         st.subheader("Plate Combinations:")
         col1, col2 = st.columns(2)
