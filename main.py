@@ -89,12 +89,12 @@ def main():
 
     if st.button("Calculate"):
         final_set_weight = (final_side_weight * 2) + bar_weight
-        drop_side_weight = final_set_weight * (1 - percent_drop) / 2
-        drop_set_weight = (drop_side_weight * 2) + bar_weight
+        drop_side_weight = final_set_weight * (1 - percent_drop)
+        drop_set_weight = drop_side_weight + bar_weight
         
         st.subheader("Calculated Weights:")
         st.write(f"Final Set Weight (total): {final_set_weight:.1f} lbs")
-        st.write(f"Drop Side Weight (per side): {drop_side_weight:.1f} lbs")
+        st.write(f"Drop Side Weight (total to remove): {drop_side_weight:.1f} lbs")
         st.write(f"Drop Set Weight (total): {drop_set_weight:.1f} lbs")
         
         st.subheader("Calculation Breakdown:")
@@ -104,12 +104,12 @@ def main():
         st.latex(f"FinalSetWeight = ({final_side_weight:.1f} \times 2) + {bar_weight:.1f} = {final_set_weight:.1f}")
         st.write("This is the total weight for your heaviest set, including the bar and all plates.")
         
-        st.latex(r"DropSideWeight = FinalSetWeight \times (1 - PercentDrop) \div 2")
-        st.latex(f"DropSideWeight = {final_set_weight:.1f} \times (1 - {percent_drop:.2f}) \div 2 = {drop_side_weight:.1f}")
-        st.write("This is the weight you'll have on each side of the bar for your drop set.")
+        st.latex(r"DropSideWeight = FinalSetWeight \times (1 - PercentDrop)")
+        st.latex(f"DropSideWeight = {final_set_weight:.1f} \times (1 - {percent_drop:.2f}) = {drop_side_weight:.1f}")
+        st.write("This is the total weight to remove from the bar for your drop set.")
         
-        st.latex(r"DropSetWeight = (DropSideWeight \times 2) + BarWeight")
-        st.latex(f"DropSetWeight = ({drop_side_weight:.1f} \times 2) + {bar_weight:.1f} = {drop_set_weight:.1f}")
+        st.latex(r"DropSetWeight = DropSideWeight + BarWeight")
+        st.latex(f"DropSetWeight = {drop_side_weight:.1f} + {bar_weight:.1f} = {drop_set_weight:.1f}")
         st.write("This is the total weight for your drop set, including the bar and all plates.")
         
         final_plates = calculate_plates(final_set_weight, bar_weight)
