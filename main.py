@@ -6,6 +6,15 @@ import plotly.graph_objects as go
 PLATES_LBS = [45, 35, 25, 10, 5, 2.5]
 PLATES_KG = [20, 15, 10, 5, 2.5, 1.25]
 
+# Define barbell types
+BARBELL_TYPES = {
+    "Olympic (20kg/44lbs)": 44,
+    "Standard (45lbs)": 45,
+    "Women's Olympic (15kg/33lbs)": 33,
+    "Technique Bar (15lbs)": 15,
+    "EZ Curl Bar (18lbs)": 18
+}
+
 def calculate_plates(target_weight, bar_weight):
     """Calculate the optimal combination of weight plates"""
     plates = PLATES_LBS  # We'll use lbs for simplicity in this version
@@ -82,7 +91,8 @@ def main():
         final_side_weight = st.number_input("Final Side Weight (lbs):", min_value=0.0, step=2.5, value=70.0)
     
     with col2:
-        bar_weight = st.number_input("Bar Weight (lbs):", min_value=0.0, step=5.0, value=45.0)
+        barbell_type = st.selectbox("Barbell Type:", list(BARBELL_TYPES.keys()))
+        bar_weight = BARBELL_TYPES[barbell_type]
     
     with col3:
         percent_drop = st.number_input("Percent Drop (%):", min_value=0.0, max_value=100.0, step=5.0, value=75.0) / 100
@@ -99,24 +109,24 @@ def main():
         st.write(f"Drop Set Weight: {remaining_weight:.2f} lbs")
         st.write(f"Weight Per Side, Drop: {remaining_weight_per_side:.2f} lbs")
         
-        st.subheader("Calculation Breakdown:")
-        st.write("Here's how we calculate the weights for your workout:")
-        
-        st.latex(r"FinalSetWeight = (FinalSideWeight \times 2) + BarWeight")
-        st.latex(f"FinalSetWeight = ({final_side_weight:.2f} \times 2) + {bar_weight:.2f} = {final_set_weight:.2f}")
-        st.write("This is the total weight for your heaviest set, including the bar and all plates.")
-        
-        st.latex(r"DropSideWeight = FinalSetWeight \times (1 - PercentDrop)")
-        st.latex(f"DropSideWeight = {final_set_weight:.2f} \times (1 - {percent_drop:.2f}) = {drop_side_weight:.2f}")
-        st.write("This is the total weight to remove from the bar for your drop set.")
-        
-        st.latex(r"RemainingWeight = FinalSetWeight - DropSideWeight")
-        st.latex(f"RemainingWeight = {final_set_weight:.2f} - {drop_side_weight:.2f} = {remaining_weight:.2f}")
-        st.write("This is the weight that remains on the bar after removing the drop weight.")
-        
-        st.latex(r"RemainingWeightPerSide = (RemainingWeight - BarWeight) \div 2")
-        st.latex(f"RemainingWeightPerSide = ({remaining_weight:.2f} - {bar_weight:.2f}) \div 2 = {remaining_weight_per_side:.2f}")
-        st.write("This is the weight that remains on each side of the bar after removing the drop weight.")
+        with st.expander("Show Calculation Breakdown"):
+            st.write("Here's how we calculate the weights for your workout:")
+            
+            st.latex(r"FinalSetWeight = (FinalSideWeight \times 2) + BarWeight")
+            st.latex(f"FinalSetWeight = ({final_side_weight:.2f} \times 2) + {bar_weight:.2f} = {final_set_weight:.2f}")
+            st.write("This is the total weight for your heaviest set, including the bar and all plates.")
+            
+            st.latex(r"DropSideWeight = FinalSetWeight \times (1 - PercentDrop)")
+            st.latex(f"DropSideWeight = {final_set_weight:.2f} \times (1 - {percent_drop:.2f}) = {drop_side_weight:.2f}")
+            st.write("This is the total weight to remove from the bar for your drop set.")
+            
+            st.latex(r"RemainingWeight = FinalSetWeight - DropSideWeight")
+            st.latex(f"RemainingWeight = {final_set_weight:.2f} - {drop_side_weight:.2f} = {remaining_weight:.2f}")
+            st.write("This is the weight that remains on the bar after removing the drop weight.")
+            
+            st.latex(r"RemainingWeightPerSide = (RemainingWeight - BarWeight) \div 2")
+            st.latex(f"RemainingWeightPerSide = ({remaining_weight:.2f} - {bar_weight:.2f}) \div 2 = {remaining_weight_per_side:.2f}")
+            st.write("This is the weight that remains on each side of the bar after removing the drop weight.")
         
         final_plates = calculate_plates(final_set_weight, bar_weight)
         drop_plates = calculate_plates(remaining_weight_per_side * 2 + bar_weight, bar_weight)
@@ -144,7 +154,7 @@ def main():
     st.markdown("---")
     st.subheader("How to use this calculator:")
     st.write("1. Enter the weight you want on each side of the bar for your final (heaviest) set.")
-    st.write("2. Specify the weight of the barbell you're using.")
+    st.write("2. Select the type of barbell you're using.")
     st.write("3. Set the percentage you want to drop for your drop set.")
     st.write("4. Click 'Calculate' to see the optimal plate combinations and weights for both sets.")
     
