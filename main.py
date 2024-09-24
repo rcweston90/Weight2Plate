@@ -1,8 +1,10 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
 import json
 import os
+from datetime import datetime
 
 # Define available weight plates
 PLATES_LBS = [45, 35, 25, 10, 5, 2.5]
@@ -111,6 +113,33 @@ def load_configurations():
     with open("configurations.json", "r") as f:
         return json.load(f)
 
+def save_workout_data(final_set_weight, drop_set_weight):
+    """Save the workout data to a JSON file"""
+    workout = {
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "final_set_weight": final_set_weight,
+        "drop_set_weight": drop_set_weight
+    }
+    
+    if not os.path.exists("workout_history.json"):
+        workout_history = []
+    else:
+        with open("workout_history.json", "r") as f:
+            workout_history = json.load(f)
+    
+    workout_history.append(workout)
+    
+    with open("workout_history.json", "w") as f:
+        json.dump(workout_history, f)
+
+def load_workout_history():
+    """Load workout history from the JSON file"""
+    if not os.path.exists("workout_history.json"):
+        return []
+    
+    with open("workout_history.json", "r") as f:
+        return json.load(f)
+
 def main():
     st.title("Advanced Weightlifting Plate Calculator")
     st.write("Optimize your barbell setup for weightlifting and strength training exercises, including drop sets.")
@@ -203,6 +232,31 @@ def main():
         fig = create_barbell_visual(final_plates, drop_plates)
         st.plotly_chart(fig, use_container_width=True)
         st.caption("Top: Final Set, Bottom: Drop Set")
+        
+        # Save workout data
+        save_workout_data(final_set_weight, remaining_weight)
+        
+        st.success("Workout data saved successfully!")
+    
+    # Add a new section for workout history
+    st.markdown("---")
+    st.subheader("Workout History")
+    
+    workout_history = load_workout_history()
+    
+    if workout_history:
+        df = pd.DataFrame(workout_history)
+        df['date'] = pd.to_datetime(df['date'])
+        df = df.sort_values('date', ascending=False)
+        
+        st.dataframe(df)
+        
+        # Create a simple chart to visualize progress
+        fig = px.line(df, x='date', y=['final_set_weight', 'drop_set_weight'], title='Workout Progress')
+        fig.update_layout(xaxis_title='Date', yaxis_title='Weight (lbs)')
+        st.plotly_chart(fig)
+    else:
+        st.write("No workout history available yet. Start logging your workouts!")
     
     st.markdown("---")
     st.subheader("How to use this calculator:")
