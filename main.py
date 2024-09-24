@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import json
+import os
 
 # Define available weight plates
 PLATES_LBS = [45, 35, 25, 10, 5, 2.5]
@@ -81,25 +83,76 @@ def create_barbell_visual(final_plates, drop_plates):
     
     return fig
 
+def save_configuration(name, final_side_weight, barbell_type, percent_drop):
+    """Save the current configuration to a JSON file"""
+    config = {
+        "name": name,
+        "final_side_weight": final_side_weight,
+        "barbell_type": barbell_type,
+        "percent_drop": percent_drop
+    }
+    
+    if not os.path.exists("configurations.json"):
+        configurations = []
+    else:
+        with open("configurations.json", "r") as f:
+            configurations = json.load(f)
+    
+    configurations.append(config)
+    
+    with open("configurations.json", "w") as f:
+        json.dump(configurations, f)
+
+def load_configurations():
+    """Load saved configurations from the JSON file"""
+    if not os.path.exists("configurations.json"):
+        return []
+    
+    with open("configurations.json", "r") as f:
+        return json.load(f)
+
 def main():
     st.title("Advanced Weightlifting Plate Calculator")
     st.write("Optimize your barbell setup for weightlifting and strength training exercises, including drop sets.")
     
+    # Load saved configurations
+    saved_configs = load_configurations()
+    config_names = [config["name"] for config in saved_configs]
+    
+    # Add option to load a saved configuration
+    selected_config = st.selectbox("Load a saved configuration:", [""] + config_names)
+    
+    if selected_config:
+        selected_config_data = next(config for config in saved_configs if config["name"] == selected_config)
+        final_side_weight = selected_config_data["final_side_weight"]
+        barbell_type = selected_config_data["barbell_type"]
+        percent_drop = selected_config_data["percent_drop"]
+    else:
+        final_side_weight = 70.0
+        barbell_type = list(BARBELL_TYPES.keys())[0]
+        percent_drop = 75.0
+    
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        final_side_weight = st.number_input("Final Side Weight (lbs):", min_value=0.0, step=2.5, value=70.0)
+        final_side_weight = st.number_input("Final Side Weight (lbs):", min_value=0.0, step=2.5, value=final_side_weight)
     
     with col2:
-        barbell_type = st.selectbox("Barbell Type:", list(BARBELL_TYPES.keys()))
+        barbell_type = st.selectbox("Barbell Type:", list(BARBELL_TYPES.keys()), index=list(BARBELL_TYPES.keys()).index(barbell_type))
         bar_weight = BARBELL_TYPES[barbell_type]
     
     with col3:
-        percent_drop = st.number_input("Percent Drop (%):", min_value=0.0, max_value=100.0, step=5.0, value=75.0) / 100
-
+        percent_drop = st.number_input("Percent Drop (%):", min_value=0.0, max_value=100.0, step=5.0, value=percent_drop)
+    
+    # Add input for saving the current configuration
+    save_name = st.text_input("Configuration Name (to save):")
+    if st.button("Save Configuration") and save_name:
+        save_configuration(save_name, final_side_weight, barbell_type, percent_drop)
+        st.success(f"Configuration '{save_name}' saved successfully!")
+    
     if st.button("Calculate"):
         final_set_weight = (final_side_weight * 2) + bar_weight
-        drop_side_weight = final_set_weight * (1 - percent_drop)
+        drop_side_weight = final_set_weight * (1 - percent_drop / 100)
         remaining_weight = final_set_weight - drop_side_weight
         remaining_weight_per_side = (remaining_weight - bar_weight) / 2
         
@@ -117,7 +170,7 @@ def main():
             st.write("This is the total weight for your heaviest set, including the bar and all plates.")
             
             st.latex(r"DropSideWeight = FinalSetWeight \times (1 - PercentDrop)")
-            st.latex(f"DropSideWeight = {final_set_weight:.2f} \times (1 - {percent_drop:.2f}) = {drop_side_weight:.2f}")
+            st.latex(f"DropSideWeight = {final_set_weight:.2f} \times (1 - {percent_drop/100:.2f}) = {drop_side_weight:.2f}")
             st.write("This is the total weight to remove from the bar for your drop set.")
             
             st.latex(r"RemainingWeight = FinalSetWeight - DropSideWeight")
@@ -157,6 +210,8 @@ def main():
     st.write("2. Select the type of barbell you're using.")
     st.write("3. Set the percentage you want to drop for your drop set.")
     st.write("4. Click 'Calculate' to see the optimal plate combinations and weights for both sets.")
+    st.write("5. To save your current configuration, enter a name and click 'Save Configuration'.")
+    st.write("6. To load a saved configuration, select it from the dropdown at the top of the page.")
     
     st.markdown("---")
     st.write("Note: This calculator uses pounds (lbs) and assumes standard weight plate increments.")
