@@ -1,25 +1,14 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import json
-import os
 
 # Define available weight plates
 PLATES_LBS = [45, 35, 25, 10, 5, 2.5]
 PLATES_KG = [20, 15, 10, 5, 2.5, 1.25]
 
-# Define barbell types and their weights
-BARBELLS = {
-    "Olympic (20kg/44lbs)": {"kg": 20, "lbs": 44},
-    "Standard (45lbs)": {"kg": 20.4, "lbs": 45},
-    "Women's Olympic (15kg/33lbs)": {"kg": 15, "lbs": 33},
-    "EZ Curl Bar (18kg/40lbs)": {"kg": 18, "lbs": 40},
-    "Trap Bar (27kg/60lbs)": {"kg": 27, "lbs": 60},
-}
-
-def calculate_plates(target_weight, bar_weight, unit):
+def calculate_plates(target_weight, bar_weight):
     """Calculate the optimal combination of weight plates"""
-    plates = PLATES_LBS if unit == "lbs" else PLATES_KG
+    plates = PLATES_LBS  # We'll use lbs for simplicity in this version
     
     remaining_weight = (target_weight - bar_weight) / 2  # Divide by 2 to get weight per side
     if remaining_weight < 0:
@@ -34,7 +23,7 @@ def calculate_plates(target_weight, bar_weight, unit):
     
     return combination
 
-def create_barbell_visual(final_plates, drop_plates, unit):
+def create_barbell_visual(final_plates, drop_plates):
     """Create a visual representation of the loaded barbell for final and drop sets"""
     barbell_length = 2.2  # meters
     sleeve_length = 0.4  # meters
@@ -60,14 +49,12 @@ def create_barbell_visual(final_plates, drop_plates, unit):
     plate_positions = [-barbell_length/2+sleeve_length, barbell_length/2-sleeve_length]
     plate_colors = ['red', 'blue', 'yellow', 'green', 'white', 'black']
     
-    max_plate = max(PLATES_LBS) if unit == "lbs" else max(PLATES_KG)
-    
     for plates, y_offset in [(final_plates, 0.2), (drop_plates, -0.2)]:
         for side in [0, 1]:
             position = plate_positions[side]
             direction = 1 if side == 1 else -1
             for i, plate in enumerate(plates):
-                plate_width = 0.02 + (plate / max_plate) * 0.03
+                plate_width = 0.02 + (plate / max(PLATES_LBS)) * 0.03
                 fig.add_shape(type="line",
                               x0=position, y0=y_offset-0.15, x1=position, y1=y_offset+0.15,
                               line=dict(color=plate_colors[i % len(plate_colors)], width=plate_width*100))
@@ -85,74 +72,21 @@ def create_barbell_visual(final_plates, drop_plates, unit):
     
     return fig
 
-def save_configuration(name, unit, barbell_type, plates):
-    """Save the current gym configuration to a JSON file"""
-    config = {
-        "name": name,
-        "unit": unit,
-        "barbell_type": barbell_type,
-        "plates": plates
-    }
-    
-    if not os.path.exists("gym_configs"):
-        os.makedirs("gym_configs")
-    
-    with open(f"gym_configs/{name}.json", "w") as f:
-        json.dump(config, f)
-
-def load_configuration(name):
-    """Load a gym configuration from a JSON file"""
-    try:
-        with open(f"gym_configs/{name}.json", "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return None
-
-def get_saved_configurations():
-    """Get a list of saved gym configurations"""
-    if not os.path.exists("gym_configs"):
-        return []
-    return [f.split(".")[0] for f in os.listdir("gym_configs") if f.endswith(".json")]
-
 def main():
     st.title("Advanced Weightlifting Plate Calculator")
     st.write("Optimize your barbell setup for weightlifting and strength training exercises, including drop sets.")
     
-    # Load saved configurations
-    saved_configs = get_saved_configurations()
-    selected_config = st.selectbox("Load saved configuration:", [""] + saved_configs)
-    
-    if selected_config:
-        config = load_configuration(selected_config)
-        if config:
-            st.success(f"Loaded configuration: {selected_config}")
-            unit = config["unit"]
-            barbell_type = config["barbell_type"]
-            plates = config["plates"]
-        else:
-            st.error(f"Failed to load configuration: {selected_config}")
-            unit, barbell_type, plates = "lbs", list(BARBELLS.keys())[0], PLATES_LBS
-    else:
-        unit, barbell_type, plates = "lbs", list(BARBELLS.keys())[0], PLATES_LBS
-    
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        unit = st.selectbox("Unit:", ["lbs", "kg"], index=["lbs", "kg"].index(unit))
+        final_side_weight = st.number_input("Final Side Weight (lbs):", min_value=0.0, step=2.5, value=70.0)
     
     with col2:
-        barbell_type = st.selectbox("Barbell Type:", list(BARBELLS.keys()), index=list(BARBELLS.keys()).index(barbell_type))
-        bar_weight = BARBELLS[barbell_type][unit]
+        bar_weight = st.number_input("Bar Weight (lbs):", min_value=0.0, step=5.0, value=45.0)
     
     with col3:
-        final_side_weight = st.number_input(f"Final Side Weight ({unit}):", min_value=0.0, step=2.5 if unit == "lbs" else 1.25, value=70.0 if unit == "lbs" else 31.75)
-    
-    percent_drop = st.slider("Percent Drop (%):", min_value=0.0, max_value=100.0, step=5.0, value=75.0) / 100
+        percent_drop = st.number_input("Percent Drop (%):", min_value=0.0, max_value=100.0, step=5.0, value=75.0) / 100
 
-    # Custom plate configuration
-    st.subheader("Custom Plate Configuration")
-    custom_plates = st.multiselect("Available plates:", PLATES_LBS if unit == "lbs" else PLATES_KG, default=plates)
-    
     if st.button("Calculate"):
         final_set_weight = (final_side_weight * 2) + bar_weight
         drop_side_weight = final_set_weight * (1 - percent_drop)
@@ -160,10 +94,10 @@ def main():
         remaining_weight_per_side = (remaining_weight - bar_weight) / 2
         
         st.subheader("Calculated Weights:")
-        st.write(f"Final Set Weight: {final_set_weight:.2f} {unit}")
-        st.write(f"Weight 2 Remove: {drop_side_weight:.2f} {unit}")
-        st.write(f"Drop Set Weight: {remaining_weight:.2f} {unit}")
-        st.write(f"Weight Per Side, Drop: {remaining_weight_per_side:.2f} {unit}")
+        st.write(f"Final Set Weight: {final_set_weight:.2f} lbs")
+        st.write(f"Weight 2 Remove: {drop_side_weight:.2f} lbs")
+        st.write(f"Drop Set Weight: {remaining_weight:.2f} lbs")
+        st.write(f"Weight Per Side, Drop: {remaining_weight_per_side:.2f} lbs")
         
         st.subheader("Calculation Breakdown:")
         st.write("Here's how we calculate the weights for your workout:")
@@ -184,8 +118,8 @@ def main():
         st.latex(f"RemainingWeightPerSide = ({remaining_weight:.2f} - {bar_weight:.2f}) \div 2 = {remaining_weight_per_side:.2f}")
         st.write("This is the weight that remains on each side of the bar after removing the drop weight.")
         
-        final_plates = calculate_plates(final_set_weight, bar_weight, unit)
-        drop_plates = calculate_plates(remaining_weight, bar_weight, unit)
+        final_plates = calculate_plates(final_set_weight, bar_weight)
+        drop_plates = calculate_plates(remaining_weight_per_side * 2 + bar_weight, bar_weight)
         
         st.subheader("Plate Combinations:")
         col1, col2 = st.columns(2)
@@ -194,41 +128,28 @@ def main():
             st.write("Final Set (per side):")
             plate_counts = pd.Series(final_plates).value_counts().sort_index()
             for plate, count in plate_counts.items():
-                st.write(f"{count}x {plate} {unit}")
+                st.write(f"{count}x {plate} lbs")
         
         with col2:
             st.write("Drop Set (per side):")
             plate_counts = pd.Series(drop_plates).value_counts().sort_index()
             for plate, count in plate_counts.items():
-                st.write(f"{count}x {plate} {unit}")
+                st.write(f"{count}x {plate} lbs")
         
         st.subheader("Visual Representation:")
-        fig = create_barbell_visual(final_plates, drop_plates, unit)
+        fig = create_barbell_visual(final_plates, drop_plates)
         st.plotly_chart(fig, use_container_width=True)
         st.caption("Top: Final Set, Bottom: Drop Set")
     
-    # Save configuration
-    st.subheader("Save Current Configuration")
-    config_name = st.text_input("Configuration Name:")
-    if st.button("Save Configuration"):
-        if config_name:
-            save_configuration(config_name, unit, barbell_type, custom_plates)
-            st.success(f"Configuration '{config_name}' saved successfully!")
-        else:
-            st.warning("Please enter a name for the configuration.")
-    
     st.markdown("---")
     st.subheader("How to use this calculator:")
-    st.write("1. Select your preferred unit (lbs or kg).")
-    st.write("2. Choose the type of barbell you're using.")
-    st.write("3. Enter the weight you want on each side of the bar for your final (heaviest) set.")
-    st.write("4. Set the percentage you want to drop for your drop set.")
-    st.write("5. Customize available plates if needed.")
-    st.write("6. Click 'Calculate' to see the optimal plate combinations and weights for both sets.")
-    st.write("7. Save your gym configuration for future use.")
+    st.write("1. Enter the weight you want on each side of the bar for your final (heaviest) set.")
+    st.write("2. Specify the weight of the barbell you're using.")
+    st.write("3. Set the percentage you want to drop for your drop set.")
+    st.write("4. Click 'Calculate' to see the optimal plate combinations and weights for both sets.")
     
     st.markdown("---")
-    st.write(f"Note: This calculator uses {unit} and assumes standard weight plate increments.")
+    st.write("Note: This calculator uses pounds (lbs) and assumes standard weight plate increments.")
 
 if __name__ == "__main__":
     main()
