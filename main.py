@@ -94,10 +94,10 @@ def main():
         remaining_weight_per_side = (remaining_weight - bar_weight) / 2
         
         st.subheader("Calculated Weights:")
-        st.write(f"Final Set Weight (total): {final_set_weight:.1f} lbs")
-        st.write(f"Drop Side Weight (total to remove): {drop_side_weight:.1f} lbs")
-        st.write(f"Remaining Weight (after drop): {remaining_weight:.1f} lbs")
-        st.write(f"Remaining Weight Per Side: {remaining_weight_per_side:.1f} lbs")
+        st.write(f"Final Set Weight: {final_set_weight:.1f} lbs")
+        st.write(f"Weight 2 Remove: {drop_side_weight:.1f} lbs")
+        st.write(f"Drop Set Weight: {remaining_weight:.1f} lbs")
+        st.write(f"Weight Per Side, Drop: {remaining_weight_per_side:.1f} lbs")
         
         st.subheader("Calculation Breakdown:")
         st.write("Here's how we calculate the weights for your workout:")
